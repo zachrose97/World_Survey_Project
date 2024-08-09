@@ -1,0 +1,215 @@
+```{r}
+load("C:/Users/poiso/Downloads/WVS_Cross-National_Wave_7_rData_v5_0.rdata")
+wvs_survey <- `WVS_Cross-National_Wave_7_v5_0`
+wvs_survey_adj <-`WVS_Cross-National_Wave_7_v5_0`[, -c(1:5, 46:604)]
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+
+Over the past few decades the world has seen levels of interconnection never before thought possible due to widespread technological improvements. Cultural values have been shared and spread at significantly increased rates, and communities that were once isolated can now access global information without having to leave their own home. In this project I am going to be exploring how societal and cultural values can be predicted based on both the location of where one is born and the geographic structure of where they reside.  
+
+The World Values Survey is a survey conducted across dozens of countries and regions where respondents are asked a variety of questions with subjects ranging from happiness and well being, to security, to science and technology. I am going to be focusing on the social values, attitudes and stereotypes questionnaire.
+
+```{r}
+ggplot(wvs_survey_adj, aes(x = B_COUNTRY_ALPHA)) +
+  geom_bar(fill = "skyblue", color = "black") 
+  labs(title = "Number of Responses by Country", x = "Country", y = "Number of Responses") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10))
+
+```
+```{r}
+country_continent <- c(
+  "AND" = "Europe", "ARG" = "South America", "ARM" = "Asia", "AUS" = "Australia", "BGD" = "Asia", "BOL" = "South America",
+  "BRA" = "South America", "CAN" = "North America", "CHL" = "South America", "CHN" = "Asia", "COL" = "South America",
+  "CYP" = "Europe", "CZE" = "Europe", "DEU" = "Europe", "ECU" = "South America", "EGY" = "Africa", "ETH" = "Africa",
+  "GBR" = "Europe", "GRC" = "Europe", "GTM" = "Central America", "HKG" = "Asia", "IDN" = "Asia", "IRN" = "Asia",
+  "IRQ" = "Asia", "JOR" = "Asia", "JPN" = "Asia", "KAZ" = "Asia", "KEN" = "Africa", "KGZ" = "Asia", "KOR" = "Asia",
+  "LBN" = "Asia", "LBY" = "Africa", "MAC" = "Asia", "MAR" = "Africa", "MDV" = "Asia", "MEX" = "North America",
+  "MMR" = "Asia", "MNG" = "Asia", "MYS" = "Asia", "NGA" = "Africa", "NIC" = "Central America", "NLD" = "Europe",
+  "NZL" = "Oceania", "PAK" = "Asia", "PER" = "South America", "PHL" = "Asia", "PRI" = "Central America", "ROU" = "Europe",
+  "RUS" = "Europe", "SGP" = "Asia", "SRB" = "Europe", "SVK" = "Europe", "THA" = "Asia", "TJK" = "Asia", "TUN" = "Africa",
+  "TUR" = "Asia", "TWN" = "Asia", "UKR" = "Europe", "URY" = "South America", "USA" = "North America", "VEN" = "South America",
+  "VNM" = "Asia", "ZWE" = "Africa", "NIR" = "Europe"
+)
+
+wvs_survey_adj$continent <- country_continent[wvs_survey_adj$B_COUNTRY_ALPHA]
+```
+
+```{r}
+wvs_survey_adj$continent <- factor(wvs_survey_adj$continent, levels = unique(wvs_survey_adj$continent))
+ggplot(wvs_survey_adj, aes(x = continent)) +
+  geom_bar(fill = "skyblue") +
+  labs(title = "Number of Responses by Continent", x = "Continent", y = "Number of Responses") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+In the survey, respondents are asked to score the following topics from 1 to 4, with 1 being very important, and 4 being not at all important. The topics in order from Question 1 to Question 6 are: Family, Friends, and Religion. 
+
+```{r}
+median_scores <- wvs_survey_adj %>%
+  group_by(continent) %>%
+  summarise(
+    Family = median(Q1),
+    Friends = median(Q2),
+    Religion = median(Q6)
+  )
+
+median_scores_long <- pivot_longer(median_scores, 
+                                   cols = -continent, 
+                                   names_to = "Question", 
+                                   values_to = "Median_Score")
+
+ggplot(median_scores_long, aes(x = Question, y = Median_Score, fill = continent)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Median Score for Each Question by Continent",
+       x = "Question",
+       y = "Median Score") +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+labels <- c("Under 2,000",
+            "2,000-5,000",
+            "5,000-10,000",
+            "10,000-20,000",
+            "20,000-50,000",
+            "50,000-100,000",
+            "100,000-500,000",
+            "500,000 and more")
+
+filtered_data <- wvs_survey_adj %>%
+  filter(G_TOWNSIZE != -4, G_TOWNSIZE != -5, G_TOWNSIZE2 != -4, G_TOWNSIZE2 != -5)
+
+avg_sizes <- filtered_data %>%
+  group_by(continent) %>%
+  summarize(avg_town_size = mean(G_TOWNSIZE),
+            avg_settlement_size = mean(G_TOWNSIZE2))
+
+avg_sizes_long <- pivot_longer(avg_sizes, 
+                               cols = c(avg_town_size, avg_settlement_size),
+                               names_to = "Variable",
+                               values_to = "Average Size")
+
+ggplot(avg_sizes_long, aes(x = continent, y = `Average Size`, fill = Variable)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Average Town Size and Settlement Size by Continent",
+       x = "Continent", y = "Average Size") +
+  scale_fill_manual(values = c("skyblue", "lightgreen")) +
+  scale_y_continuous(breaks = seq_along(labels), labels = labels) +  # Adjust Y axis labels and breaks
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
+
+```{r}
+subset_data <- wvs_survey_adj[, c("continent", "Q1", "Q2", "Q6")]
+subset_data$continent <- relevel(subset_data$continent, ref = "Europe")
+lm_model1 <- lm(Q1 ~ continent, data = subset_data)
+
+summary(lm_model1)
+
+```
+```{r}
+subset_data <- wvs_survey_adj[, c("continent", "Q1", "Q2", "Q6")]
+subset_data$continent <- relevel(subset_data$continent, ref = "Europe")
+lm_model2 <- lm(Q2 ~ continent, data = subset_data)
+
+summary(lm_model2 )
+```
+
+
+
+```{r}
+subset_data <- wvs_survey_adj[, c("continent", "Q1", "Q2", "Q6")]
+subset_data$continent <- relevel(subset_data$continent, ref = "Europe")
+lm_model6 <- lm(Q6 ~ continent, data = subset_data)
+
+summary(lm_model6)
+```
+
+
+
+```{r}
+plot(predict(lm_model1), residuals(lm_model1),
+     xlab = "Predicted Values",
+     ylab = "Residuals",
+     main = "Predictors vs. Residuals Plot")
+abline(h = 0, col = "red")  # Add a horizontal line at y = 0
+
+plot(fitted(lm_model1), residuals(lm_model1),
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     main = "Fitted vs. Residuals Plot")
+abline(h = 0, col = "red")  # Add a horizontal line at y = 0
+
+qqnorm(residuals(lm_model1))
+qqline(residuals(lm_model1))
+
+hist(residuals(lm_model1), main = "Histogram of Residuals", xlab = "Residuals")
+```
+
+```{r}
+plot(predict(lm_model2), residuals(lm_model2),
+     xlab = "Predicted Values",
+     ylab = "Residuals",
+     main = "Predictors vs. Residuals Plot")
+abline(h = 0, col = "red")  # Add a horizontal line at y = 0
+
+plot(fitted(lm_model2), residuals(lm_model2),
+     xlab = "Fitted Values",
+     ylab = "Residuals",
+     main = "Fitted vs. Residuals Plot")
+abline(h = 0, col = "red")  # Add a horizontal line at y = 0
+
+qqnorm(residuals(lm_model2))
+qqline(residuals(lm_model2))
+
+hist(residuals(lm_model2), main = "Histogram of Residuals", xlab = "Residuals")
+```
+
+
+```{r}
+qqnorm(lm_model6$residuals)
+qqline(lm_model6$residuals)
+```
+
+```{r}
+residuals <- resid(lm_model1)
+
+# Create a residual plot
+plot(fitted(lm_model1), residuals,
+     xlab = "Fitted values",
+     ylab = "Residuals",
+     main = "Residual Plot")
+abline(h = 0, col = "red")  # Add a horizontal line at y = 0
+```
+
+```{r}
+hist(wvs_survey_adj$Q1, main = "Distribution of Family Values", xlab = "Family Values")
+boxplot(Q1 ~ continent, data = wvs_survey_adj, main = "Family Values by Continent")
+hist(wvs_survey_adj$Q2, main = "Distribution of Friendship Values", xlab = "Friendship Values")
+boxplot(Q2 ~ continent, data = wvs_survey_adj, main = "Friendship Values by Continent")
+hist(wvs_survey_adj$Q6, main = "Distribution of Religious Values", xlab = "Religious Values")
+boxplot(Q6 ~ continent, data = wvs_survey_adj, main = "Religious Values by Continent")
+
+aggregate(Q1 ~ continent, data = wvs_survey_adj, FUN = mean)
+aggregate(Q2 ~ continent, data = wvs_survey_adj, FUN = mean)
+aggregate(Q6 ~ continent, data = wvs_survey_adj, FUN = mean)
+```
+
+
